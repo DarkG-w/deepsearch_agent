@@ -1,0 +1,49 @@
+[Server] WebSocket Manager bound to loop: 2080409678384
+[Server] stdout=utf-8, stderr=utf-8
+Client connected: 35598fb9-5751-425e-99a0-4e2358cb590b
+INFO:     127.0.0.1:56480 - "GET /api/version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56485 - "POST /api/task HTTP/1.1" 200 OK
+当前会话的main_agent开始执行了！ 会话id:smoke_db_8001
+
+[Monitor:session_created] 工作目录已创建: D:/LangChain/deep_search/output/session_smoke_db_8001
+
+[Monitor:assistant_call] 正在调用助手: 数据库查询助手
+
+[Monitor:tool_start] 开始执行工具: 数据库工具:list_sql_tables
+
+[Monitor:tool_start] 开始执行工具: 数据库工具:get_table_data
+主智能体执行结果，最终结果：
+根据数据库查询结果，我已成功获取了您所需的信息：
+
+## 数据库表列表
+当前数据库中包含以下3个表：
+- drugs
+- inventory  
+- sales_records
+
+## drugs表
+
+[Monitor:task_result] 任务执行完成
+Client disconnected: 35598fb9-5751-425e-99a0-4e2358cb590b
+Client connected: ad03d6ba-bb36-46a4-981b-a08ebe707bf9
+Client disconnected: ad03d6ba-bb36-46a4-981b-a08ebe707bf9
+Client connected: 2048840d-6e50-4938-b54d-8d70d9a6f841
+INFO:     127.0.0.1:58077 - "OPTIONS /api/task HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58077 - "POST /api/task HTTP/1.1" 200 OK
+当前会话的main_agent开始执行了！ 会话id:2048840d-6e50-4938-b54d-8d70d9a6f841
+
+[Monitor:session_created] 工作目录已创建: D:/LangChain/deep_search/output/session_2048840d-6e50-4938-b54d-8d70d9a6f841
+[DEBUG] list_files request path: D:/LangChain/deep_search/output/session_2048840d-6e50-4938-b54d-8d70d9a6f841
+[DEBUG] abs_path: D:\LangChain\deep_search\output\session_2048840d-6e50-4938-b54d-8d70d9a6f841
+[DEBUG] output_dir abs: D:\LangChain\deep_search\output
+[DEBUG] Found 0 files
+INFO:     127.0.0.1:64391 - "GET /api/files?path=D:%2FLangChain%2Fdeep_search%2Foutput%2Fsession_2048840d-6e50-4938-b54d-8d70d9a6f841 HTTP/1.1" 200 OK
+主智能体执行结果，最终结果：
+我已准备好在工作目录 `output/session_2048840d-6e50-4938-b54d-8d70d9a6f841` 中为您服务。请告诉我您需要什么帮助，我可以协助您进行信息获取或文件生
+
+[Monitor:task_result] 任务执行完成
+[DEBUG] list_files request path: D:/LangChain/deep_search/output/session_2048840d-6e50-4938-b54d-8d70d9a6f841
+[DEBUG] abs_path: D:\LangChain\deep_search\output\session_2048840d-6e50-4938-b54d-8d70d9a6f841
+[DEBUG] output_dir abs: D:\LangChain\deep_search\output
+[DEBUG] Found 0 files
+INFO:     127.0.0.1:55886 - "GET /api/files?path=D:%2FLangChain%2Fdeep_search%2Foutput%2Fsession_2048840d-6e50-4938-b54d-8d70d9a6f841 HTTP/1.1" 200 OK
