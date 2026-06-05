@@ -1,7 +1,7 @@
 from agent.subagents.knowledge_base_agent import knowledge_base_agent
 from agent.subagents.database_query_agent import database_query_agent
 from agent.subagents.network_search_agent import network_search_agent
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 # main_agent tool导入
 from tools.markdown_tools import generate_markdown
@@ -9,12 +9,14 @@ from tools.pdf_tools import convert_md_to_pdf
 from tools.upload_file_read_tool import read_file_content
 
 from deepagents import create_deep_agent
+from deepagents.backends import FilesystemBackend
 
 from agent.llm import model
 from agent.prompts import main_agent_content
 
 from api.monitor import monitor
 import asyncio
+import sqlite3
 import uuid
 import shutil
 import sys
@@ -33,11 +35,21 @@ try:
 except Exception:
     pass
 
+project_root_path = Path(__file__).parents[1].resolve()
+checkpoint_db_path = project_root_path / "data" / "agent_checkpoints.sqlite3"
+checkpoint_db_path.parent.mkdir(parents=True, exist_ok=True)
+checkpoint_conn = sqlite3.connect(str(checkpoint_db_path), check_same_thread=False)
+checkpointer = SqliteSaver(checkpoint_conn)
+checkpointer.setup()
+agent_backend = FilesystemBackend(root_dir=project_root_path, virtual_mode=True)
+
 main_agent = create_deep_agent(
    model = model,
    system_prompt=main_agent_content['system_prompt'],
    tools= [generate_markdown,convert_md_to_pdf,read_file_content],
-   checkpointer=InMemorySaver(),
+   checkpointer=checkpointer,
+   backend=agent_backend,
+   skills=["/skills/project/"],
    subagents=[
        database_query_agent,
        network_search_agent,
@@ -58,7 +70,6 @@ main_agent = create_deep_agent(
 
 
 
-project_root_path = Path(__file__).parents[1].resolve() # 绝对 解析路径标识以及软连接
 # project_root_path = Path(__file__).parents[1].absolute() # 绝对
 # main_agent.invoke()
 # main_agent.stream()
@@ -134,9 +145,9 @@ async def run_deep_agent(task_query,session_id,history_context: str = ""):
         user_content = task_query + path_instruction
         if history_context:
             user_content += (
-                "\n\n[历史会话上下文，仅供参考]\n"
+                "\n\n[记忆上下文，仅供参考]\n"
                 f"{history_context}\n"
-                "请延续历史语境回答，并避免重复粘贴整段历史。"
+                "请延续已有语境回答，优先使用相关记忆，但不要重复粘贴整段历史。"
             )
 
         async for chunk in main_agent.astream({

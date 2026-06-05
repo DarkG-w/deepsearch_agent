@@ -53,6 +53,7 @@ langchain-openai==1.1.10
 langchain-text-splitters==1.1.1
 langgraph==1.0.9
 langgraph-checkpoint==4.0.0
+langgraph-checkpoint-sqlite==2.0.6
 langgraph-prebuilt==1.0.8
 langgraph-sdk==0.3.8
 langsmith==0.7.6
@@ -81,6 +82,7 @@ pycparser==3.0
 pydantic==2.12.5
 pydantic-settings==2.13.1
 pydantic_core==2.41.5
+pymilvus==3.0.0
 pydyf==0.12.1
 Pygments==2.19.2
 pyHanko==0.33.0

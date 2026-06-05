@@ -37,6 +37,8 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from agent.main_agent import run_deep_agent
+from agent.llm import model as memory_llm
+from api.memory_store import AdvancedMemoryStore
 from api.monitor import monitor
 
 BUILD_TAG = "fix-gbk-2026-05-31-2"
@@ -55,6 +57,7 @@ os.makedirs(updated_dir, exist_ok=True)
 data_dir = os.path.join(project_root, "data")
 os.makedirs(data_dir, exist_ok=True)
 sessions_store_file = os.path.join(data_dir, "chat_sessions.json")
+memory_store_file = os.path.join(data_dir, "memory.sqlite3")
 
 
 def cleanup_empty_session_dirs() -> int:
@@ -317,7 +320,7 @@ class ChatSessionStore:
         return "\n".join(lines)
 
 
-session_store = ChatSessionStore(sessions_store_file)
+session_store = AdvancedMemoryStore(memory_store_file, legacy_json_path=sessions_store_file)
 
 
 def to_session_response(session: Dict[str, Any]) -> Dict[str, Any]:
@@ -535,8 +538,14 @@ class TaskLifecycleManager:
             if result:
                 try:
                     await session_store.append_message(session_id, "assistant", str(result))
+                    await session_store.update_memory_after_turn(
+                        session_id=session_id,
+                        user_query=query,
+                        assistant_answer=str(result),
+                        llm=memory_llm,
+                    )
                 except Exception as exc:
-                    print(f"[SessionStore] Failed to persist assistant message: {type(exc).__name__}: {exc}")
+                    print(f"[SessionStore] Failed to persist assistant memory: {type(exc).__name__}: {exc}")
         finally:
             async with self._lock:
                 self._runtime_tasks.pop(task_id, None)
@@ -637,6 +646,7 @@ async def list_sessions():
 async def create_session(request: Optional[CreateSessionRequest] = None):
     title = request.title if request else None
     session = await session_store.create_session(title=title)
+    Path(output_dir, f"session_{session['thread_id']}").mkdir(parents=True, exist_ok=True)
     return to_session_response(session)
 
 
@@ -690,6 +700,20 @@ async def api_version():
     }
 
 
+@app.get("/api/memories")
+async def list_memories(limit: int = Query(default=100, ge=1, le=500)):
+    memories = await session_store.list_memories(limit=limit)
+    return {"memories": memories}
+
+
+@app.delete("/api/memories/{memory_id}")
+async def delete_memory(memory_id: str):
+    deleted = await session_store.delete_memory(memory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Memory not found: {memory_id}")
+    return {"status": "deleted", "memory_id": memory_id}
+
+
 @app.post("/api/task", status_code=202)
 async def run_task(request: TaskRequest):
     try:
@@ -701,8 +725,14 @@ async def run_task(request: TaskRequest):
         raise HTTPException(status_code=404, detail=str(exc))
     session_id = resolved_session["session_id"]
     thread_id = resolved_session["thread_id"]
+    Path(output_dir, f"session_{thread_id}").mkdir(parents=True, exist_ok=True)
 
-    history_context = await session_store.build_history_context(session_id, max_messages=12)
+    history_context = await session_store.build_memory_context(
+        session_id=session_id,
+        user_query=request.query,
+        max_recent_messages=8,
+        max_relevant_memories=6,
+    )
     await session_store.append_message(session_id, "user", request.query)
 
     record = await task_lifecycle.create(
@@ -757,7 +787,14 @@ async def retry_task(task_id: str, request: Optional[RetryTaskRequest] = None):
         raise HTTPException(status_code=404, detail=str(exc))
     resolved_thread_id = resolved_session["thread_id"]
     resolved_session_id = resolved_session["session_id"]
-    history_context = await session_store.build_history_context(resolved_session_id, max_messages=12)
+    source_record = await task_lifecycle.get(task_id)
+    source_query = source_record.get("query", "") if source_record else ""
+    history_context = await session_store.build_memory_context(
+        session_id=resolved_session_id,
+        user_query=source_query,
+        max_recent_messages=8,
+        max_relevant_memories=6,
+    )
 
     try:
         new_record = await task_lifecycle.retry(
