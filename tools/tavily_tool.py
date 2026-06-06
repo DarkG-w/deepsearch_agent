@@ -12,6 +12,8 @@ import os  # 系统路径/环境变量处理
 from dotenv import load_dotenv  # 加载 .env 文件中的环境变量
 
 # 自定义模块：工具调用埋点监控（需确保 api 模块可导入）
+from api.context import get_task_context, get_thread_context
+from api.evaluation import evaluation_store
 from api.monitor import monitor
 
 # ======================== 初始化配置 ========================
@@ -21,6 +23,7 @@ load_dotenv()
 
 # 步骤1： 定义一个TavilyClient对象
 tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+SEARCH_CACHE_TTL_SECONDS = int(os.getenv("SEARCH_CACHE_TTL_SECONDS", "3600"))
 
 
 # 步骤2： 定义一个网络搜索工具
@@ -42,12 +45,50 @@ def internet_search(
     """
     # 每次调用工具，都都会向前端推进调用进度！
     # 参数1： 工具的名字  参数2： 就是调用工具的参数信息
-    monitor.report_tool(tool_name="网络搜索工具",
-                        args={"query": query, "topic": topic, "max_results": max_results,
-                              "include_raw_content": include_raw_content})
+    request_payload = {
+        "query": query,
+        "topic": topic,
+        "max_results": max_results,
+        "include_raw_content": include_raw_content,
+    }
+    monitor.report_tool(tool_name="网络搜索工具", args=request_payload)
 
-    return tavily_client.search(query = query, topic =  topic,
-                                max_results = max_results, include_raw_content = include_raw_content)
+    cached = evaluation_store.cache_get("tavily_search", request_payload)
+    if cached is not None:
+        evaluation = evaluation_store.record_search_evaluation(
+            query=query,
+            topic=topic,
+            provider="tavily",
+            response=cached,
+            cached=True,
+            task_id=get_task_context(),
+            thread_id=get_thread_context(),
+        )
+        monitor._emit(
+            "search_quality",
+            "搜索结果来自缓存",
+            {"provider": "tavily", "cached": True, "evaluation": evaluation},
+        )
+        return cached
+
+    result = tavily_client.search(query=query, topic=topic,
+                                  max_results=max_results, include_raw_content=include_raw_content)
+    evaluation = evaluation_store.record_search_evaluation(
+        query=query,
+        topic=topic,
+        provider="tavily",
+        response=result,
+        cached=False,
+        task_id=get_task_context(),
+        thread_id=get_thread_context(),
+    )
+    evaluation_store.cache_set("tavily_search", request_payload, result, SEARCH_CACHE_TTL_SECONDS)
+    monitor._emit(
+        "search_quality",
+        "搜索质量评估完成",
+        {"provider": "tavily", "cached": False, "evaluation": evaluation},
+    )
+    return result
 
 
 

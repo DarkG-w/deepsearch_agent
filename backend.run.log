@@ -15,3 +15,5 @@ Client connected: 95580a5c-8111-4235-b3d4-13705d697355
 [DEBUG] output_dir abs: D:\LangChain\deep_search\output
 [ERROR] Path not found: D:\LangChain\deep_search\output\session_95580a5c-8111-4235-b3d4-13705d697355
 INFO:     127.0.0.1:54592 - "GET /api/files?path=D:%5CLangChain%5Cdeep_search%5Coutput%5Csession_95580a5c-8111-4235-b3d4-13705d697355 HTTP/1.1" 200 OK
+Client disconnected: 95580a5c-8111-4235-b3d4-13705d697355
+INFO:     127.0.0.1:52311 - "GET /api/eval/summary HTTP/1.1" 404 Not Found

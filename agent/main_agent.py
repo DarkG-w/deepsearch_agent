@@ -23,7 +23,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from api.context import set_session_context, reset_session_context, set_thread_context
+from api.context import set_session_context, reset_session_context, set_task_context, set_thread_context
 
 from langchain_core.messages import AIMessage
 
@@ -74,7 +74,7 @@ main_agent = create_deep_agent(
 # main_agent.invoke()
 # main_agent.stream()
 # main_agent.astream() [选他]
-async def run_deep_agent(task_query,session_id,history_context: str = ""):
+async def run_deep_agent(task_query,session_id,history_context: str = "", task_id: str = None):
     """
     定义流式+异步执行主智能体！！
     执行过程中，返回  会话文件化返回  调用子智能体  调用最终结果 （monitor）
@@ -115,6 +115,7 @@ async def run_deep_agent(task_query,session_id,history_context: str = ""):
     # 继续准备 1. 当前会话的对应的session_id session_dir 存储到contextVars [后续工具获取，socket -> 推送消息] 2.调用monitor给前端推送session_dir信息
     session_dir_token = set_session_context(session_dir_str)  # 存储的当前会话对应的文件夹地址
     session_id_token = set_thread_context(session_id)  #获取当前会话的session_id对应socket
+    task_id_token = set_task_context(task_id) if task_id else None
 
     monitor.report_session_dir(session_dir_str)  # 当前会话对应的文件夹地址推送给起前端！
 
@@ -196,7 +197,7 @@ async def run_deep_agent(task_query,session_id,history_context: str = ""):
         monitor._emit("error", f"执行主智能发生异常信息：{type(e).__name__}: {str(e)}")
     finally:
         # 释放存储的地址和session_id
-        reset_session_context(session_dir_token, session_id_token)
+        reset_session_context(session_dir_token, session_id_token, task_id_token)
 
     return final_result
 

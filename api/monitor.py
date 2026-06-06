@@ -2,7 +2,7 @@
 import asyncio
 import sys
 from typing import Any, Dict, Optional
-from api.context import get_thread_context
+from api.context import get_task_context, get_thread_context
 
 # 尝试导入全局运行时（用于脚本模式下的流式输出）
 try:
@@ -90,6 +90,19 @@ class ToolMonitor:
             "data": safe_data,
             "timestamp": datetime.datetime.now().isoformat(),
         }
+
+        try:
+            from api.evaluation import evaluation_store
+
+            evaluation_store.record_event(
+                event_type=event_type,
+                message=safe_message,
+                payload=safe_data,
+                task_id=get_task_context(),
+                thread_id=get_thread_context(),
+            )
+        except Exception:
+            pass
 
         # 1) 优先通过 FastAPI WebSocket 定向推送
         if self.websocket_manager:

@@ -1,0 +1,4 @@
+{"case_id":"db-overview","query":"帮我查一下数据库有哪些表，并总结每张表的作用。","expected_keywords":["drugs","inventory","sales_records"],"category":"database"}
+{"case_id":"memory-system-review","query":"简单说明这个项目当前长期记忆系统包含哪些组件。","expected_keywords":["SQLite","Milvus","长期记忆"],"category":"memory"}
+{"case_id":"skill-overview","query":"介绍一下项目里的 report-generation 和 database-analysis skill 分别负责什么。","expected_keywords":["report-generation","database-analysis"],"category":"skills"}
+{"case_id":"code-review","query":"请对 api/evaluation.py 做一次代码审查，优先指出风险和测试缺口。","expected_keywords":["Findings","测试"],"category":"code-review"}

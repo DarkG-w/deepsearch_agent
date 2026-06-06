@@ -38,6 +38,7 @@ if project_root not in sys.path:
 
 from agent.main_agent import run_deep_agent
 from agent.llm import model as memory_llm
+from api.evaluation import evaluation_store
 from api.memory_store import AdvancedMemoryStore
 from api.monitor import monitor
 
@@ -502,7 +503,14 @@ class TaskLifecycleManager:
             history_context = record.get("history_context", "")
 
         try:
-            result = await run_deep_agent(query, thread_id, history_context=history_context)
+            evaluation_store.start_task(
+                task_id=task_id,
+                session_id=session_id,
+                thread_id=thread_id,
+                query=query,
+                retry_of=record.get("retry_of"),
+            )
+            result = await run_deep_agent(query, thread_id, history_context=history_context, task_id=task_id)
         except asyncio.CancelledError:
             cancel_msg = "Task cancelled by user."
             async with self._lock:
@@ -516,6 +524,7 @@ class TaskLifecycleManager:
                 await session_store.append_message(session_id, "assistant", cancel_msg)
             except Exception:
                 pass
+            evaluation_store.finish_task(task_id, "cancelled", error=cancel_msg)
             raise
         except Exception as exc:
             error_text = f"{type(exc).__name__}: {exc}"
@@ -529,6 +538,7 @@ class TaskLifecycleManager:
                 await session_store.append_message(session_id, "assistant", error_text)
             except Exception:
                 pass
+            evaluation_store.finish_task(task_id, "failed", error=error_text)
         else:
             async with self._lock:
                 record = self._records.get(task_id)
@@ -546,6 +556,7 @@ class TaskLifecycleManager:
                     )
                 except Exception as exc:
                     print(f"[SessionStore] Failed to persist assistant memory: {type(exc).__name__}: {exc}")
+            evaluation_store.finish_task(task_id, "completed", final_result=str(result or ""))
         finally:
             async with self._lock:
                 self._runtime_tasks.pop(task_id, None)
@@ -712,6 +723,29 @@ async def delete_memory(memory_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Memory not found: {memory_id}")
     return {"status": "deleted", "memory_id": memory_id}
+
+
+@app.get("/api/eval/summary")
+async def eval_summary():
+    return evaluation_store.summary()
+
+
+@app.get("/api/eval/traces")
+async def list_eval_traces(limit: int = Query(default=50, ge=1, le=500)):
+    return {"traces": evaluation_store.list_traces(limit=limit)}
+
+
+@app.get("/api/eval/traces/{task_id}")
+async def get_eval_trace(task_id: str):
+    trace = evaluation_store.get_trace(task_id)
+    if not trace:
+        raise HTTPException(status_code=404, detail=f"Trace not found: {task_id}")
+    return trace
+
+
+@app.get("/api/eval/searches")
+async def list_search_evaluations(limit: int = Query(default=100, ge=1, le=500)):
+    return {"search_evaluations": evaluation_store.list_search_evaluations(limit=limit)}
 
 
 @app.post("/api/task", status_code=202)
