@@ -12,4 +12,3 @@ data/*.sqlite3-wal
 data/*.sqlite3-shm
 *.run.log
 *.run.err.log
-std.py
