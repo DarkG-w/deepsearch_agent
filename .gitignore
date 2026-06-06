@@ -3,6 +3,7 @@
 tstsql.py
 test.py
 study.py
+std.py
 .venv/
 __pycache__/
 *.pyc
